@@ -8,8 +8,9 @@ data class Song(
     val genre: String,
     val durationSec: Int,
     val filePath: String,
-    /** Chosen "Alterar capa" result index, persisted in Room; null until the user picks one. */
-    val customCoverVariant: Int? = null,
+    /** Content URI of a user-picked cover (via the system photo picker), persisted in Room;
+     * null until the user picks one, in which case it takes priority over embedded artwork. */
+    val customCoverUri: String? = null,
 )
 
 /** The directory the file lives in — used to group songs into "folders" in the List tab. */

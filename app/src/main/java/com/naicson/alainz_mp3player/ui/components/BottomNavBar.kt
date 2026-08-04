@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.MusicNote
@@ -25,28 +26,34 @@ import com.naicson.alainz_mp3player.ui.theme.TextFaint
 @Composable
 fun BottomNavBar(activeTab: AppTab, onGoToPlayer: () -> Unit, onGoToList: () -> Unit, modifier: Modifier = Modifier) {
     val accent = LocalAccentColor.current
-    Row(
+    // The background lives on this outer Column so it bleeds through into the gesture-nav-bar
+    // inset added below; the actual 60dp bar is a fixed-height child, not stretched by that
+    // inset — otherwise the icons end up vertically centered across bar+inset combined and
+    // look stuck near the top with dead space underneath.
+    Column(
         modifier = modifier
             .fillMaxWidth()
-            .height(60.dp)
-            .background(NavBarBackground),
+            .background(NavBarBackground)
+            .navigationBarsPadding(),
     ) {
-        NavItem(
-            label = "Player",
-            icon = Icons.Filled.MusicNote,
-            selected = activeTab == AppTab.PLAYER,
-            selectedColor = accent,
-            onClick = onGoToPlayer,
-            modifier = Modifier.weight(1f),
-        )
-        NavItem(
-            label = "List",
-            icon = Icons.Filled.LibraryMusic,
-            selected = activeTab == AppTab.LIST,
-            selectedColor = accent,
-            onClick = onGoToList,
-            modifier = Modifier.weight(1f),
-        )
+        Row(modifier = Modifier.fillMaxWidth().height(60.dp)) {
+            NavItem(
+                label = "Player",
+                icon = Icons.Filled.MusicNote,
+                selected = activeTab == AppTab.PLAYER,
+                selectedColor = accent,
+                onClick = onGoToPlayer,
+                modifier = Modifier.weight(1f),
+            )
+            NavItem(
+                label = "List",
+                icon = Icons.Filled.LibraryMusic,
+                selected = activeTab == AppTab.LIST,
+                selectedColor = accent,
+                onClick = onGoToList,
+                modifier = Modifier.weight(1f),
+            )
+        }
     }
 }
 

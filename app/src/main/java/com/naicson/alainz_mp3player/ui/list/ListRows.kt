@@ -56,7 +56,6 @@ fun SongRow(
     song: Song,
     isCurrent: Boolean,
     stripeEven: Boolean,
-    coverVariant: Pair<Long, Int>?,
     menuExpanded: Boolean,
     onSelect: () -> Unit,
     onOpenPlayer: () -> Unit,
@@ -78,7 +77,7 @@ fun SongRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        CoverArt(coverVariant = coverVariant, modifier = Modifier.size(40.dp), shape = RoundedCornerShape(4.dp), iconFraction = 0.45f)
+        CoverArt(song = song, modifier = Modifier.size(40.dp), shape = RoundedCornerShape(4.dp), iconFraction = 0.45f)
 
         Column(modifier = Modifier.weight(1f)) {
             Text(song.title, style = AppTextStyles.rowTitle, color = if (isCurrent) AccentGold else TextPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)

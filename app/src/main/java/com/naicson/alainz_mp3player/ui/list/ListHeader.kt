@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -58,6 +59,7 @@ fun ListHeader(state: MusicUiState, viewModel: MusicViewModel, modifier: Modifie
                     isRefreshing = state.isRefreshing,
                     onOpenSearch = viewModel::openSearch,
                     onRefresh = viewModel::refreshLibrary,
+                    onOpenSettings = viewModel::openSettings,
                 )
                 TabsRow(listView = state.listView, onSongsTab = viewModel::selectSongsTab, onFoldersTab = viewModel::selectFoldersTab)
                 if (state.listView == ListView.SONGS) {
@@ -81,7 +83,7 @@ fun ListHeader(state: MusicUiState, viewModel: MusicViewModel, modifier: Modifie
 }
 
 @Composable
-private fun NormalHeader(isRefreshing: Boolean, onOpenSearch: () -> Unit, onRefresh: () -> Unit) {
+private fun NormalHeader(isRefreshing: Boolean, onOpenSearch: () -> Unit, onRefresh: () -> Unit, onOpenSettings: () -> Unit) {
     val accent = LocalAccentColor.current
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(top = 20.dp, bottom = 14.dp),
@@ -111,6 +113,15 @@ private fun NormalHeader(isRefreshing: Boolean, onOpenSearch: () -> Unit, onRefr
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(Icons.Filled.Search, contentDescription = "Buscar", tint = TextPrimary, modifier = Modifier.size(17.dp))
+            }
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .border(1.dp, Border, RoundedCornerShape(8.dp))
+                    .clickable(onClick = onOpenSettings),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Filled.Settings, contentDescription = "Configurações", tint = TextPrimary, modifier = Modifier.size(17.dp))
             }
         }
     }

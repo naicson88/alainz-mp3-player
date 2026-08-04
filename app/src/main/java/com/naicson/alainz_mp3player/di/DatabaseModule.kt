@@ -17,7 +17,10 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): AppDatabase =
-        Room.databaseBuilder(context, AppDatabase::class.java, "alainz_mp3player.db").build()
+        Room.databaseBuilder(context, AppDatabase::class.java, "alainz_mp3player.db")
+            // No shipped users yet (still pre-release) — schema shape changes (like customCoverVariant:Int → customCoverUri:String) don't need a real migration.
+            .fallbackToDestructiveMigration(dropAllTables = true)
+            .build()
 
     @Provides
     fun provideSongDao(database: AppDatabase): SongDao = database.songDao()

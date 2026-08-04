@@ -59,9 +59,11 @@ class MediaStoreMusicRepository @Inject constructor(
         dao.updateMetadata(id, title, artist, album, genre)
     }
 
-    override suspend fun updateCustomCover(id: Long, variant: Int?) {
-        dao.updateCover(id, variant)
+    override suspend fun updateCustomCover(id: Long, uri: String?) {
+        dao.updateCover(id, uri)
     }
+
+    override suspend fun resolveGenre(filePath: String): String = scanner.readGenreTag(filePath)
 
     override suspend fun requestDelete(song: Song): DeleteOutcome = deleter.requestDelete(song.contentUri())
 

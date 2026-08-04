@@ -1,21 +1,31 @@
 package com.naicson.alainz_mp3player.ui.music
 
+import android.content.Intent
 import android.content.IntentSender
+import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.naicson.alainz_mp3player.data.local.DeleteOutcome
+import com.naicson.alainz_mp3player.data.local.RingtoneAssigner
+import com.naicson.alainz_mp3player.data.local.UserPreferencesRepository
+import com.naicson.alainz_mp3player.data.local.contentUri
+import com.naicson.alainz_mp3player.data.model.Song
 import com.naicson.alainz_mp3player.data.model.folderPath
+import com.naicson.alainz_mp3player.data.remote.AlbumArtSearchService
 import com.naicson.alainz_mp3player.data.repository.MusicRepository
 import com.naicson.alainz_mp3player.playback.PlayerConnection
+import com.naicson.alainz_mp3player.ui.theme.AccentBlue
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -31,17 +41,28 @@ import javax.inject.Inject
 class MusicViewModel @Inject constructor(
     private val repository: MusicRepository,
     private val player: PlayerConnection,
+    private val ringtoneAssigner: RingtoneAssigner,
+    private val albumArtSearch: AlbumArtSearchService,
+    private val preferences: UserPreferencesRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MusicUiState())
     val uiState: StateFlow<MusicUiState> = _uiState.asStateFlow()
+
+    val accentColor: StateFlow<Color> = preferences.accentColor.stateIn(viewModelScope, SharingStarted.Eagerly, AccentBlue)
 
     /** One-shot system delete-confirmation prompts the Activity must launch — see `AppRoot`. */
     private val _deleteConfirmationRequests = MutableSharedFlow<IntentSender>(extraBufferCapacity = 1)
     val deleteConfirmationRequests: SharedFlow<IntentSender> = _deleteConfirmationRequests.asSharedFlow()
     private var pendingSystemDeleteSongId: Long? = null
 
+    /** One-shot "grant WRITE_SETTINGS" system-screen prompts the Activity must launch — see `AppRoot`. */
+    private val _writeSettingsRequests = MutableSharedFlow<Intent>(extraBufferCapacity = 1)
+    val writeSettingsRequests: SharedFlow<Intent> = _writeSettingsRequests.asSharedFlow()
+    private var pendingRingtoneSongId: Long? = null
+
     private var toastJob: Job? = null
+    private var coverSearchJob: Job? = null
 
     init {
         viewModelScope.launch { player.isPlaying.collect { playing -> _uiState.update { it.copy(playing = playing) } } }
@@ -62,8 +83,7 @@ class MusicViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             val songs = repository.getSongs()
-            val customCovers = songs.mapNotNull { song -> song.customCoverVariant?.let { song.id to it } }.toMap()
-            _uiState.update { it.copy(songs = songs, customCovers = customCovers, isLoading = false, currentIndex = 0) }
+            _uiState.update { it.copy(songs = songs, isLoading = false, currentIndex = 0) }
             player.setPlaylist(songs)
         }
     }
@@ -76,8 +96,7 @@ class MusicViewModel @Inject constructor(
             _uiState.update { it.copy(isRefreshing = true) }
             val before = _uiState.value.songs.size
             val songs = repository.refreshLibrary()
-            val customCovers = songs.mapNotNull { song -> song.customCoverVariant?.let { song.id to it } }.toMap()
-            _uiState.update { it.copy(songs = songs, customCovers = customCovers, isRefreshing = false) }
+            _uiState.update { it.copy(songs = songs, isRefreshing = false) }
             player.setPlaylist(songs)
             val added = songs.size - before
             showToast(
@@ -90,7 +109,14 @@ class MusicViewModel @Inject constructor(
     }
 
     fun goToPlayer() = _uiState.update { it.copy(activeTab = AppTab.PLAYER) }
-    fun goToList() = _uiState.update { it.copy(activeTab = AppTab.LIST) }
+
+    /** Tapping the bottom-nav "List" icon should always land on the list root — closing
+     * whatever folder is open, not just switching tabs (which is a no-op if already on List). */
+    fun goToList() = _uiState.update { it.copy(activeTab = AppTab.LIST, openFolder = null) }
+
+    fun openSettings() = _uiState.update { it.copy(settingsOpen = true) }
+    fun closeSettings() = _uiState.update { it.copy(settingsOpen = false) }
+    fun setAccentColor(color: Color) = viewModelScope.launch { preferences.setAccentColor(color) }
 
     fun toggleShuffle() = viewModelScope.launch { player.setShuffle(!_uiState.value.shuffle) }
     fun toggleRepeat() = viewModelScope.launch { player.setRepeat(!_uiState.value.repeat) }
@@ -162,14 +188,27 @@ class MusicViewModel @Inject constructor(
         }
     }
 
-    fun openEdit(songId: Long) = _uiState.update { s ->
-        val song = s.songs.firstOrNull { it.id == songId } ?: return@update s
-        s.copy(
-            editingSongId = songId,
-            editForm = EditForm(title = song.title, artist = song.artist, album = song.album, genre = song.genre),
-            openMenuSongId = null,
-            playerMenuOpen = false,
-        )
+    fun openEdit(songId: Long) {
+        val song = _uiState.value.songs.firstOrNull { it.id == songId } ?: return
+        _uiState.update { s ->
+            s.copy(
+                editingSongId = songId,
+                editForm = EditForm(title = song.title, artist = song.artist, album = song.album, genre = song.genre),
+                openMenuSongId = null,
+                playerMenuOpen = false,
+            )
+        }
+        // The ID3 fallback is real per-file I/O — too slow to run for the whole library up
+        // front (see MediaStoreAudioScanner.readGenreTag), so it only runs here, for the one
+        // song actually being edited, and only when nothing already filled the field in.
+        if (song.genre.isBlank()) {
+            viewModelScope.launch {
+                val genre = repository.resolveGenre(song.filePath)
+                if (genre.isNotBlank()) {
+                    _uiState.update { s -> if (s.editingSongId == songId) s.copy(editForm = s.editForm.copy(genre = genre)) else s }
+                }
+            }
+        }
     }
 
     fun cancelEdit() = _uiState.update { it.copy(editingSongId = null) }
@@ -191,39 +230,104 @@ class MusicViewModel @Inject constructor(
         val current = _uiState.value
         val id = current.editingSongId ?: return
         val form = current.editForm
+        var updatedIndex = -1
+        var updatedSong: Song? = null
         _uiState.update { s ->
-            s.copy(
-                songs = s.songs.map { song ->
-                    if (song.id == id) song.copy(title = form.title, artist = form.artist, album = form.album, genre = form.genre)
-                    else song
-                },
-                editingSongId = null,
+            val songs = s.songs.mapIndexed { index, song ->
+                if (song.id != id) return@mapIndexed song
+                song.copy(title = form.title, artist = form.artist, album = form.album, genre = form.genre).also {
+                    updatedIndex = index
+                    updatedSong = it
+                }
+            }
+            s.copy(songs = songs, editingSongId = null)
+        }
+        viewModelScope.launch {
+            repository.updateMetadata(id, form.title, form.artist, form.album, form.genre)
+            // Otherwise the media notification/lock screen would keep showing the old
+            // title/artist until the app is fully reloaded, since it reads from the player's
+            // own MediaItem metadata, not from this screen's state.
+            updatedSong?.let { song -> player.updateMediaItem(updatedIndex, song) }
+        }
+    }
+
+    /** Menu action — opens the cover picker pre-searched on the song's own artist/title. */
+    fun openChangeCover(songId: Long) {
+        val song = _uiState.value.songs.firstOrNull { it.id == songId } ?: return
+        _uiState.update {
+            it.copy(
+                coverPickerSongId = songId,
+                coverSearchQuery = "${song.artist} ${song.title}".trim(),
+                coverSearchResults = emptyList(),
+                coverSearchSelectedUrl = null,
+                openMenuSongId = null,
+                playerMenuOpen = false,
             )
         }
-        viewModelScope.launch { repository.updateMetadata(id, form.title, form.artist, form.album, form.genre) }
+        runCoverSearch()
     }
 
-    fun openChangeCover(songId: Long) = _uiState.update {
-        it.copy(coverPickerSongId = songId, coverSearchSelectedIndex = null, openMenuSongId = null, playerMenuOpen = false)
+    fun setCoverSearchQuery(query: String) = _uiState.update { it.copy(coverSearchQuery = query) }
+
+    fun runCoverSearch() {
+        val query = _uiState.value.coverSearchQuery.trim()
+        if (query.isEmpty()) return
+        coverSearchJob?.cancel()
+        coverSearchJob = viewModelScope.launch {
+            _uiState.update { it.copy(coverSearchLoading = true, coverSearchResults = emptyList(), coverSearchSelectedUrl = null) }
+            val results = albumArtSearch.search(query)
+            _uiState.update { it.copy(coverSearchLoading = false, coverSearchResults = results) }
+        }
     }
 
-    fun closeCoverPicker() = _uiState.update { it.copy(coverPickerSongId = null, coverSearchSelectedIndex = null) }
-    fun selectCoverResult(index: Int) = _uiState.update { it.copy(coverSearchSelectedIndex = index) }
+    fun selectCoverResult(url: String) = _uiState.update { it.copy(coverSearchSelectedUrl = url) }
+
+    fun closeCoverPicker() {
+        coverSearchJob?.cancel()
+        _uiState.update {
+            it.copy(coverPickerSongId = null, coverSearchQuery = "", coverSearchResults = emptyList(), coverSearchSelectedUrl = null)
+        }
+    }
 
     fun confirmCover() {
         val current = _uiState.value
         val songId = current.coverPickerSongId ?: return
-        val resultIndex = current.coverSearchSelectedIndex ?: return
+        val url = current.coverSearchSelectedUrl ?: return
         _uiState.update { s ->
-            s.copy(customCovers = s.customCovers + (songId to resultIndex), coverPickerSongId = null, coverSearchSelectedIndex = null)
+            s.copy(
+                songs = s.songs.map { if (it.id == songId) it.copy(customCoverUri = url) else it },
+                coverPickerSongId = null,
+                coverSearchQuery = "",
+                coverSearchResults = emptyList(),
+                coverSearchSelectedUrl = null,
+            )
         }
-        viewModelScope.launch { repository.updateCustomCover(songId, resultIndex) }
+        viewModelScope.launch { repository.updateCustomCover(songId, url) }
     }
 
+    /** Menu action — writing the ringtone needs WRITE_SETTINGS, a special-access permission
+     * only grantable from a system settings screen; see `RingtoneAssigner`. */
     fun setRingtone(songId: Long) {
-        val title = _uiState.value.songs.firstOrNull { it.id == songId }?.title ?: return
         _uiState.update { it.copy(openMenuSongId = null, playerMenuOpen = false) }
-        showToast("Definido como toque: $title")
+        if (!ringtoneAssigner.canWrite()) {
+            pendingRingtoneSongId = songId
+            showToast("Permita a alteração de configurações para definir o toque")
+            _writeSettingsRequests.tryEmit(ringtoneAssigner.manageWriteSettingsIntent())
+            return
+        }
+        applyRingtone(songId)
+    }
+
+    /** Called once the user returns from the WRITE_SETTINGS screen launched from `AppRoot`. */
+    fun onWriteSettingsResult() {
+        val songId = pendingRingtoneSongId ?: return
+        pendingRingtoneSongId = null
+        if (ringtoneAssigner.canWrite()) applyRingtone(songId) else showToast("Permissão não concedida")
+    }
+
+    private fun applyRingtone(songId: Long) {
+        val song = _uiState.value.songs.firstOrNull { it.id == songId } ?: return
+        showToast(if (ringtoneAssigner.setAsRingtone(song.contentUri())) "Definido como toque: ${song.title}" else "Não foi possível definir o toque")
     }
 
     fun requestDelete(songId: Long) = _uiState.update { it.copy(pendingDeleteSongId = songId, openMenuSongId = null, playerMenuOpen = false) }

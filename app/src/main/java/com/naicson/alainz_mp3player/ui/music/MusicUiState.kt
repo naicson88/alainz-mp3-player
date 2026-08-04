@@ -28,10 +28,6 @@ data class MusicUiState(
     val playerMenuOpen: Boolean = false,
     val editingSongId: Long? = null,
     val editForm: EditForm = EditForm(),
-    val coverPickerSongId: Long? = null,
-    val coverSearchSelectedIndex: Int? = null,
-    /** songId -> chosen result index, standing in for a picked cover image. */
-    val customCovers: Map<Long, Int> = emptyMap(),
     val toast: String? = null,
     val listView: ListView = ListView.SONGS,
     /** Folder identity is the real device directory path, not the album. */
@@ -39,6 +35,13 @@ data class MusicUiState(
     val searchOpen: Boolean = false,
     val searchQuery: String = "",
     val pendingDeleteSongId: Long? = null,
+    /** "Alterar capa" — searches cover art by artist/track via `AlbumArtSearchService`. */
+    val coverPickerSongId: Long? = null,
+    val coverSearchQuery: String = "",
+    val coverSearchLoading: Boolean = false,
+    val coverSearchResults: List<String> = emptyList(),
+    val coverSearchSelectedUrl: String? = null,
+    val settingsOpen: Boolean = false,
 ) {
     val currentSong: Song? get() = songs.getOrNull(currentIndex)
 

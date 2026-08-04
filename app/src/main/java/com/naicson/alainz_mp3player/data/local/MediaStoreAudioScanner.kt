@@ -1,6 +1,7 @@
 package com.naicson.alainz_mp3player.data.local
 
 import android.content.Context
+import android.media.MediaMetadataRetriever
 import android.media.MediaScannerConnection
 import android.os.Build
 import android.os.Environment
@@ -70,17 +71,41 @@ class MediaStoreAudioScanner @Inject constructor(
             val genreCol = if (hasGenreColumn) cursor.getColumnIndex(MediaStore.Audio.Media.GENRE) else -1
 
             while (cursor.moveToNext()) {
+                val filePath = cursor.getString(dataCol).orEmpty()
+                val mediaStoreGenre = (if (genreCol >= 0) cursor.getString(genreCol) else null).orEmpty()
+
                 songs += Song(
                     id = cursor.getLong(idCol),
                     title = cursor.getString(titleCol) ?: "Sem título",
                     artist = cursor.getString(artistCol)?.takeUnless { it == "<unknown>" } ?: "Artista desconhecido",
                     album = cursor.getString(albumCol).orEmpty(),
-                    genre = (if (genreCol >= 0) cursor.getString(genreCol) else null).orEmpty(),
+                    genre = mediaStoreGenre,
                     durationSec = (cursor.getLong(durationCol) / 1000).toInt(),
-                    filePath = cursor.getString(dataCol).orEmpty(),
+                    filePath = filePath,
                 )
             }
         }
         songs
+    }
+
+    /**
+     * [MediaStore.Audio.Media.GENRE] only exists from API 30 on, and even there it's often
+     * empty — MediaProvider doesn't parse every tag format. Falling back to the file's own ID3
+     * genre tag (via [MediaMetadataRetriever]) catches most of what MediaStore misses — but it's
+     * real per-file I/O, too slow to run for every song during a full-library scan (measured in
+     * minutes on a real device with a large library), so callers resolve it lazily, one song at
+     * a time, only when the genre is actually needed (e.g. opening the edit screen).
+     */
+    suspend fun readGenreTag(filePath: String): String = withContext(Dispatchers.IO) {
+        if (filePath.isBlank()) return@withContext ""
+        val retriever = MediaMetadataRetriever()
+        try {
+            retriever.setDataSource(filePath)
+            retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_GENRE).orEmpty()
+        } catch (e: Exception) {
+            ""
+        } finally {
+            retriever.release()
+        }
     }
 }

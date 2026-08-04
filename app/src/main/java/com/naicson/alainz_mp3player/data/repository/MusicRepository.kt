@@ -11,7 +11,10 @@ interface MusicRepository {
     suspend fun refreshLibrary(): List<Song>
 
     suspend fun updateMetadata(id: Long, title: String, artist: String, album: String, genre: String)
-    suspend fun updateCustomCover(id: Long, variant: Int?)
+    suspend fun updateCustomCover(id: Long, uri: String?)
+
+    /** Lazy, single-file ID3 genre fallback — see `MediaStoreAudioScanner.readGenreTag`. */
+    suspend fun resolveGenre(filePath: String): String
 
     suspend fun requestDelete(song: Song): DeleteOutcome
     suspend fun finishDelete(song: Song): DeleteOutcome

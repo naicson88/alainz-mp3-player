@@ -155,6 +155,15 @@ class PlayerConnection @Inject constructor(
         c.prepare()
     }
 
+    /** Refreshes one item's title/artist/artwork in place — e.g. after editing a song's info —
+     * without interrupting playback if it's the item currently playing. */
+    suspend fun updateMediaItem(index: Int, song: Song) {
+        val c = awaitController()
+        if (index in 0 until c.mediaItemCount) {
+            c.replaceMediaItem(index, song.toMediaItem())
+        }
+    }
+
     suspend fun playAt(index: Int) {
         val c = awaitController()
         c.seekTo(index, 0L)

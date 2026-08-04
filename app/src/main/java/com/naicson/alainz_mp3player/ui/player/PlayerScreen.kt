@@ -68,7 +68,6 @@ fun PlayerScreen(viewModel: MusicViewModel, modifier: Modifier = Modifier) {
     val state by viewModel.uiState.collectAsState()
     val song = state.currentSong ?: return
     val accent = LocalAccentColor.current
-    val customCover = state.customCovers[song.id]?.let { song.id to it }
 
     Box(
         modifier = modifier
@@ -80,7 +79,7 @@ fun PlayerScreen(viewModel: MusicViewModel, modifier: Modifier = Modifier) {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 28.dp)
-                .padding(top = 22.dp, bottom = 20.dp),
+                .padding(top = 44.dp, bottom = 36.dp),
         ) {
             Box(modifier = Modifier.fillMaxWidth()) {
                 Text(
@@ -107,7 +106,7 @@ fun PlayerScreen(viewModel: MusicViewModel, modifier: Modifier = Modifier) {
             Spacer(modifier = Modifier.height(20.dp))
 
             CoverArt(
-                coverVariant = customCover,
+                song = song,
                 modifier = Modifier
                     .align(Alignment.CenterHorizontally)
                     .fillMaxWidth(0.77f)

@@ -18,7 +18,7 @@ data class SongEntity(
     val genre: String,
     val durationSec: Int,
     val filePath: String,
-    val customCoverVariant: Int? = null,
+    val customCoverUri: String? = null,
 )
 
 fun SongEntity.toSong() = Song(
@@ -29,5 +29,5 @@ fun SongEntity.toSong() = Song(
     genre = genre,
     durationSec = durationSec,
     filePath = filePath,
-    customCoverVariant = customCoverVariant,
+    customCoverUri = customCoverUri,
 )

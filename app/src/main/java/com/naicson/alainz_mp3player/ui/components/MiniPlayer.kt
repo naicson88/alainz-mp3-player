@@ -36,7 +36,6 @@ private val MiniPlayerGradient = Brush.linearGradient(listOf(Color(0xFF6C4AB6), 
 @Composable
 fun MiniPlayer(
     song: Song,
-    coverVariant: Pair<Long, Int>?,
     playing: Boolean,
     onOpenPlayer: () -> Unit,
     onTogglePlay: () -> Unit,
@@ -55,7 +54,7 @@ fun MiniPlayer(
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        CoverArt(coverVariant = coverVariant, modifier = Modifier.size(44.dp), shape = RoundedCornerShape(8.dp), iconFraction = 0.45f)
+        CoverArt(song = song, modifier = Modifier.size(44.dp), shape = RoundedCornerShape(8.dp), iconFraction = 0.45f)
 
         Column(modifier = Modifier.weight(1f)) {
             Text(song.title, style = AppTextStyles.miniPlayerTitle, color = TextPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)

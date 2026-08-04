@@ -1,5 +1,7 @@
 package com.naicson.alainz_mp3player.ui.components
 
+import android.graphics.Bitmap
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -8,37 +10,53 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
+import com.naicson.alainz_mp3player.data.local.EmbeddedArtwork
+import com.naicson.alainz_mp3player.data.model.Song
 import com.naicson.alainz_mp3player.ui.theme.ElevatedSurface
 import com.naicson.alainz_mp3player.ui.theme.TextFaint
-import kotlin.math.abs
 
 /**
- * Placeholder cover art matching the design: a flat surface with a centered music-note
- * icon when no artwork is set, or a gradient brush once the user picks one via
- * "Alterar capa" (there's no real image storage yet — [coverVariant] stands in for it).
+ * Real cover art, in priority order: a user-picked image (`customCoverUri`, from the system
+ * photo picker) beats the artwork embedded in the file's own tags, which beats a plain
+ * music-note placeholder when neither is available.
  */
 @Composable
 fun CoverArt(
-    coverVariant: Pair<Long, Int>?,
+    song: Song,
     modifier: Modifier = Modifier,
     shape: RoundedCornerShape = RoundedCornerShape(8.dp),
     iconFraction: Float = 0.23f,
 ) {
+    val customUri = song.customCoverUri
+    val embedded = if (customUri == null) rememberEmbeddedArtwork(song.id, song.filePath) else null
+
     Box(
-        modifier = modifier
-            .clip(shape)
-            .background(if (coverVariant != null) Color.Transparent else ElevatedSurface)
-            .then(if (coverVariant != null) Modifier.background(coverGradientBrush(coverVariant.first, coverVariant.second)) else Modifier),
+        modifier = modifier.clip(shape).background(ElevatedSurface),
         contentAlignment = Alignment.Center,
     ) {
-        if (coverVariant == null) {
-            Icon(
+        when {
+            customUri != null -> AsyncImage(
+                model = customUri,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+            embedded != null -> Image(
+                bitmap = embedded.asImageBitmap(),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+            else -> Icon(
                 imageVector = Icons.Filled.MusicNote,
                 contentDescription = null,
                 tint = TextFaint,
@@ -48,26 +66,10 @@ fun CoverArt(
     }
 }
 
-/** Ported from the design's `coverGradientVariant(seed, variantIndex)` mock-cover generator. */
-fun coverGradientBrush(seed: Long, variantIndex: Int): Brush {
-    val hue = (200 + (seed * 13 + variantIndex * 41) % 150).toFloat()
-    val shade = variantIndex % 3
-    val start = hslColor(hue, 0.40f, (24 + shade * 7) / 100f)
-    val end = hslColor(hue, 0.50f, (38 + shade * 7) / 100f)
-    return Brush.linearGradient(listOf(start, end))
-}
-
-private fun hslColor(hueDeg: Float, saturation: Float, lightness: Float): Color {
-    val c = (1 - abs(2 * lightness - 1)) * saturation
-    val x = c * (1 - abs((hueDeg / 60f) % 2 - 1))
-    val m = lightness - c / 2
-    val (r, g, b) = when {
-        hueDeg < 60 -> Triple(c, x, 0f)
-        hueDeg < 120 -> Triple(x, c, 0f)
-        hueDeg < 180 -> Triple(0f, c, x)
-        hueDeg < 240 -> Triple(0f, x, c)
-        hueDeg < 300 -> Triple(x, 0f, c)
-        else -> Triple(c, 0f, x)
+@Composable
+private fun rememberEmbeddedArtwork(songId: Long, filePath: String): Bitmap? {
+    val state = produceState<Bitmap?>(initialValue = null, key1 = songId, key2 = filePath) {
+        value = EmbeddedArtwork.load(songId, filePath)
     }
-    return Color(r + m, g + m, b + m)
+    return state.value
 }

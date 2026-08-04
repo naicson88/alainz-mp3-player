@@ -6,6 +6,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.naicson.alainz_mp3player.data.local.DeleteOutcome
+import com.naicson.alainz_mp3player.data.local.EmbeddedArtwork
 import com.naicson.alainz_mp3player.data.local.RingtoneAssigner
 import com.naicson.alainz_mp3player.data.local.UserPreferencesRepository
 import com.naicson.alainz_mp3player.data.local.contentUri
@@ -67,6 +68,10 @@ class MusicViewModel @Inject constructor(
     private var toastJob: Job? = null
     private var coverSearchJob: Job? = null
 
+    /** Song IDs already checked for an automatic cover this session — avoids re-hitting the
+     * network every time the same coverless song plays again (e.g. on repeat). */
+    private val autoCoverChecked = mutableSetOf<Long>()
+
     init {
         viewModelScope.launch {
             player.isPlaying.collect { playing ->
@@ -78,6 +83,7 @@ class MusicViewModel @Inject constructor(
             player.currentIndex.collect { index ->
                 _uiState.update { it.copy(currentIndex = index) }
                 persistPlaybackState()
+                _uiState.value.currentSong?.let { song -> viewModelScope.launch { maybeAutoFetchCover(song) } }
             }
         }
         viewModelScope.launch { player.shuffleEnabled.collect { s -> _uiState.update { it.copy(shuffle = s) } } }
@@ -120,6 +126,7 @@ class MusicViewModel @Inject constructor(
             }
 
             _uiState.update { it.copy(songs = songs, isLoading = false, currentIndex = restoredIndex) }
+            _uiState.value.currentSong?.let { song -> maybeAutoFetchCover(song) }
         }
     }
 
@@ -289,10 +296,11 @@ class MusicViewModel @Inject constructor(
     /** Menu action — opens the cover picker pre-searched on the song's own artist/title. */
     fun openChangeCover(songId: Long) {
         val song = _uiState.value.songs.firstOrNull { it.id == songId } ?: return
+        val query = if (song.artist == "Artista desconhecido") song.title else "${song.artist} ${song.title}"
         _uiState.update {
             it.copy(
                 coverPickerSongId = songId,
-                coverSearchQuery = "${song.artist} ${song.title}".trim(),
+                coverSearchQuery = query.trim(),
                 coverSearchResults = emptyList(),
                 coverSearchSelectedUrl = null,
                 openMenuSongId = null,
@@ -338,6 +346,28 @@ class MusicViewModel @Inject constructor(
             )
         }
         viewModelScope.launch { repository.updateCustomCover(songId, url) }
+    }
+
+    /** Runs once per song per session, right when it becomes the current one: if it has neither
+     * a user-picked cover nor artwork embedded in its own tags, silently searches iTunes with the
+     * same artist/title criteria as the manual picker and adopts the first hit — no dialog, no
+     * user action. Leaves the cover-picker UI state alone so it can't clobber a picker the user
+     * might have open for a different song. */
+    private suspend fun maybeAutoFetchCover(song: Song) {
+        if (!autoCoverChecked.add(song.id)) return
+        if (song.customCoverUri != null) return
+        if (EmbeddedArtwork.load(song.id, song.filePath) != null) return
+
+        val query = (if (song.artist == "Artista desconhecido") song.title else "${song.artist} ${song.title}").trim()
+        if (query.isEmpty()) return
+        val url = albumArtSearch.search(query).firstOrNull() ?: return
+
+        // The song may have moved on (or gotten a cover some other way) while the search ran.
+        val stillMissing = _uiState.value.songs.firstOrNull { it.id == song.id }?.customCoverUri == null
+        if (!stillMissing) return
+
+        _uiState.update { s -> s.copy(songs = s.songs.map { if (it.id == song.id) it.copy(customCoverUri = url) else it }) }
+        repository.updateCustomCover(song.id, url)
     }
 
     /** Menu action — writing the ringtone needs WRITE_SETTINGS, a special-access permission

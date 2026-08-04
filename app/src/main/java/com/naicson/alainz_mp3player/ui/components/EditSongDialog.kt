@@ -20,8 +20,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.naicson.alainz_mp3player.ui.music.EditForm
+import com.naicson.alainz_mp3player.ui.theme.AlainzMp3PlayerTheme
 import com.naicson.alainz_mp3player.ui.theme.AppTextStyles
 import com.naicson.alainz_mp3player.ui.theme.Border
 import com.naicson.alainz_mp3player.ui.theme.LocalAccentColor
@@ -30,6 +32,22 @@ import com.naicson.alainz_mp3player.ui.theme.ScreenBackground
 import com.naicson.alainz_mp3player.ui.theme.TextMuted
 import com.naicson.alainz_mp3player.ui.theme.TextPrimary
 import com.naicson.alainz_mp3player.ui.theme.TextSecondary
+
+@Preview(showBackground = true, backgroundColor = 0xFF2A2A2A)
+@Composable
+private fun EditSongDialogPreview() {
+    AlainzMp3PlayerTheme {
+        EditSongDialog(
+            editForm = EditForm(title = "Título", artist = "Artista", album = "Álbum", genre = "Pop"),
+            onTitleChange = {},
+            onArtistChange = {},
+            onAlbumChange = {},
+            onGenreChange = {},
+            onCancel = {},
+            onSave = {},
+        )
+    }
+}
 
 @Composable
 fun EditSongDialog(

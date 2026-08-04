@@ -30,12 +30,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.naicson.alainz_mp3player.data.model.folderDisplayName
 import com.naicson.alainz_mp3player.ui.components.ShuffleOrderButtons
 import com.naicson.alainz_mp3player.ui.music.ListView
 import com.naicson.alainz_mp3player.ui.music.MusicUiState
 import com.naicson.alainz_mp3player.ui.music.MusicViewModel
+import com.naicson.alainz_mp3player.ui.theme.AlainzMp3PlayerTheme
 import com.naicson.alainz_mp3player.ui.theme.AppTextStyles
 import com.naicson.alainz_mp3player.ui.theme.Border
 import com.naicson.alainz_mp3player.ui.theme.ElevatedSurface
@@ -79,6 +81,14 @@ fun ListHeader(state: MusicUiState, viewModel: MusicViewModel, modifier: Modifie
                 )
             }
         }
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF2A2A2A)
+@Composable
+private fun NormalHeaderPreview() {
+    AlainzMp3PlayerTheme {
+        NormalHeader(isRefreshing = false, onOpenSearch = {}, onRefresh = {}, onOpenSettings = {})
     }
 }
 
@@ -127,6 +137,14 @@ private fun NormalHeader(isRefreshing: Boolean, onOpenSearch: () -> Unit, onRefr
     }
 }
 
+@Preview(showBackground = true, backgroundColor = 0xFF2A2A2A)
+@Composable
+private fun SearchRowPreview() {
+    AlainzMp3PlayerTheme {
+        SearchRow(query = "", onQueryChange = {}, onClose = {})
+    }
+}
+
 @Composable
 private fun SearchRow(query: String, onQueryChange: (String) -> Unit, onClose: () -> Unit) {
     val focusRequester = remember { FocusRequester() }
@@ -167,6 +185,14 @@ private fun SearchRow(query: String, onQueryChange: (String) -> Unit, onClose: (
     }
 }
 
+@Preview(showBackground = true, backgroundColor = 0xFF2A2A2A)
+@Composable
+private fun TabsRowPreview() {
+    AlainzMp3PlayerTheme {
+        TabsRow(listView = ListView.SONGS, onSongsTab = {}, onFoldersTab = {})
+    }
+}
+
 @Composable
 private fun TabsRow(listView: ListView, onSongsTab: () -> Unit, onFoldersTab: () -> Unit) {
     Row(
@@ -191,6 +217,14 @@ private fun TabPill(label: String, selected: Boolean, onClick: () -> Unit, modif
         contentAlignment = Alignment.Center,
     ) {
         Text(label, style = AppTextStyles.pillButtonLabel, color = TextPrimary)
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF2A2A2A)
+@Composable
+private fun CountAndPlayRowPreview() {
+    AlainzMp3PlayerTheme {
+        CountAndPlayRow(label = "12/48", onShuffle = {}, onOrder = {})
     }
 }
 

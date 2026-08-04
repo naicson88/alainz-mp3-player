@@ -32,8 +32,10 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.naicson.alainz_mp3player.ui.theme.AlainzMp3PlayerTheme
 import com.naicson.alainz_mp3player.ui.theme.AppTextStyles
 import com.naicson.alainz_mp3player.ui.theme.Border
 import com.naicson.alainz_mp3player.ui.theme.LocalAccentColor
@@ -47,6 +49,24 @@ import com.naicson.alainz_mp3player.ui.theme.TextPrimary
  * cover art by artist/track through [com.naicson.alainz_mp3player.data.remote.AlbumArtSearchService]
  * (the iTunes catalog) instead — real official artwork, no API key, no scraping.
  */
+@Preview(showBackground = true, backgroundColor = 0xFF2A2A2A)
+@Composable
+private fun ChangeCoverDialogPreview() {
+    AlainzMp3PlayerTheme {
+        ChangeCoverDialog(
+            query = "Nome da música",
+            onQueryChange = {},
+            onSearch = {},
+            isLoading = false,
+            results = emptyList(),
+            selectedUrl = null,
+            onSelectResult = {},
+            onCancel = {},
+            onConfirm = {},
+        )
+    }
+}
+
 @Composable
 fun ChangeCoverDialog(
     query: String,

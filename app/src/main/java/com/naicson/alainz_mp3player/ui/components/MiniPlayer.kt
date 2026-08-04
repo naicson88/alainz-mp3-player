@@ -24,14 +24,29 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.naicson.alainz_mp3player.data.model.Song
+import com.naicson.alainz_mp3player.ui.theme.AlainzMp3PlayerTheme
 import com.naicson.alainz_mp3player.ui.theme.AppTextStyles
 import com.naicson.alainz_mp3player.ui.theme.LocalAccentColor
 import com.naicson.alainz_mp3player.ui.theme.TextPrimary
 import com.naicson.alainz_mp3player.ui.theme.TextSecondary
 
 private val MiniPlayerGradient = Brush.linearGradient(listOf(Color(0xFF6C4AB6), Color(0xFFB39DDB), Color(0xFFF3EFFB)))
+
+@Preview(showBackground = true, backgroundColor = 0xFF2A2A2A)
+@Composable
+private fun MiniPlayerPreview() {
+    AlainzMp3PlayerTheme {
+        MiniPlayer(
+            song = Song(id = 1, title = "Título da Música", artist = "Artista Exemplo", album = "Álbum", genre = "Pop", durationSec = 180, filePath = "/music/song.mp3"),
+            playing = true,
+            onOpenPlayer = {},
+            onTogglePlay = {},
+        )
+    }
+}
 
 @Composable
 fun MiniPlayer(

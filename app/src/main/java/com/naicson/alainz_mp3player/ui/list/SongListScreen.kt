@@ -21,9 +21,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.naicson.alainz_mp3player.ui.music.MusicUiState
 import com.naicson.alainz_mp3player.ui.music.MusicViewModel
+import com.naicson.alainz_mp3player.ui.theme.AlainzMp3PlayerTheme
 import com.naicson.alainz_mp3player.ui.theme.AppTextStyles
 import com.naicson.alainz_mp3player.ui.theme.ScreenBackground
 import com.naicson.alainz_mp3player.ui.theme.TextHint
@@ -78,6 +80,14 @@ private fun AlphabetIndex(content: ListContent.AllSongs, listState: LazyListStat
         },
         modifier = modifier,
     )
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF2A2A2A)
+@Composable
+private fun EmptyHintPreview() {
+    AlainzMp3PlayerTheme {
+        EmptyHint("Nenhum resultado para \"exemplo\"")
+    }
 }
 
 @Composable

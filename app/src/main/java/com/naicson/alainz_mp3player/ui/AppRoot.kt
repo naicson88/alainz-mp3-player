@@ -26,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -40,6 +41,7 @@ import com.naicson.alainz_mp3player.ui.list.SongListScreen
 import com.naicson.alainz_mp3player.ui.music.AppTab
 import com.naicson.alainz_mp3player.ui.music.MusicViewModel
 import com.naicson.alainz_mp3player.ui.player.PlayerScreen
+import com.naicson.alainz_mp3player.ui.theme.AlainzMp3PlayerTheme
 import com.naicson.alainz_mp3player.ui.theme.LocalAccentColor
 import com.naicson.alainz_mp3player.ui.theme.TextHint
 
@@ -158,10 +160,26 @@ fun AppRoot(viewModel: MusicViewModel = hiltViewModel(), modifier: Modifier = Mo
     }
 }
 
+@Preview(showBackground = true, backgroundColor = 0xFF2A2A2A)
+@Composable
+private fun LoadingLibraryPreview() {
+    AlainzMp3PlayerTheme {
+        LoadingLibrary()
+    }
+}
+
 @Composable
 private fun LoadingLibrary() {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         CircularProgressIndicator(color = LocalAccentColor.current)
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF2A2A2A)
+@Composable
+private fun EmptyLibraryPreview() {
+    AlainzMp3PlayerTheme {
+        EmptyLibrary(isRefreshing = false, onRefresh = {})
     }
 }
 

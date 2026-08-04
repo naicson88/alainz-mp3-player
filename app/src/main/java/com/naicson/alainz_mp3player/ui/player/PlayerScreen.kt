@@ -47,10 +47,12 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.naicson.alainz_mp3player.ui.components.CoverArt
 import com.naicson.alainz_mp3player.ui.components.SongOptionsMenu
 import com.naicson.alainz_mp3player.ui.music.MusicViewModel
+import com.naicson.alainz_mp3player.ui.theme.AlainzMp3PlayerTheme
 import com.naicson.alainz_mp3player.ui.theme.AppTextStyles
 import com.naicson.alainz_mp3player.ui.theme.ElevatedSurface
 import com.naicson.alainz_mp3player.ui.theme.LocalAccentColor
@@ -156,6 +158,22 @@ fun PlayerScreen(viewModel: MusicViewModel, modifier: Modifier = Modifier) {
     }
 }
 
+@Preview(showBackground = true, backgroundColor = 0xFF2A2A2A)
+@Composable
+private fun SeekSectionPreview() {
+    AlainzMp3PlayerTheme {
+        SeekSection(
+            progressPercent = 42f,
+            currentLabel = "1:32",
+            totalLabel = "3:35",
+            accent = LocalAccentColor.current,
+            onSkipBack = {},
+            onSkipForward = {},
+            onSeek = {},
+        )
+    }
+}
+
 @Composable
 private fun SeekSection(
     progressPercent: Float,
@@ -200,6 +218,24 @@ private fun SeekSection(
             Text(currentLabel, style = AppTextStyles.timeLabel, color = TextMuted)
             Text(totalLabel, style = AppTextStyles.timeLabel, color = TextMuted)
         }
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF2A2A2A)
+@Composable
+private fun TransportRowPreview() {
+    AlainzMp3PlayerTheme {
+        TransportRow(
+            shuffle = true,
+            repeat = false,
+            playing = true,
+            accent = LocalAccentColor.current,
+            onToggleShuffle = {},
+            onToggleRepeat = {},
+            onPrev = {},
+            onTogglePlay = {},
+            onNext = {},
+        )
     }
 }
 
@@ -252,6 +288,14 @@ private fun TransportRow(
         IconButton(onClick = onToggleRepeat) {
             Icon(Icons.Filled.Repeat, contentDescription = "Repetir", tint = if (repeat) accent else TextFaint)
         }
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF2A2A2A)
+@Composable
+private fun VolumeBarPreview() {
+    AlainzMp3PlayerTheme {
+        VolumeBar(volumePercent = 65f, onSetVolume = {})
     }
 }
 

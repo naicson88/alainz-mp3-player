@@ -9,10 +9,20 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.naicson.alainz_mp3player.ui.theme.AlainzMp3PlayerTheme
 import com.naicson.alainz_mp3player.ui.theme.AppTextStyles
 import com.naicson.alainz_mp3player.ui.theme.NavBarBackground
 import com.naicson.alainz_mp3player.ui.theme.TextPrimary
+
+@Preview(showBackground = true, backgroundColor = 0xFF2A2A2A)
+@Composable
+private fun ToastPreview() {
+    AlainzMp3PlayerTheme {
+        Toast(message = "Música removida com sucesso")
+    }
+}
 
 @Composable
 fun Toast(message: String, modifier: Modifier = Modifier) {

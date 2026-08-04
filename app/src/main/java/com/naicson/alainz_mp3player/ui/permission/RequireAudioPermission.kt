@@ -26,11 +26,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import com.google.accompanist.permissions.shouldShowRationale
+import com.naicson.alainz_mp3player.ui.theme.AlainzMp3PlayerTheme
 import com.naicson.alainz_mp3player.ui.theme.LocalAccentColor
 import com.naicson.alainz_mp3player.ui.theme.ScreenBackground
 import com.naicson.alainz_mp3player.ui.theme.TextMuted
@@ -63,6 +65,14 @@ fun RequireAudioPermission(content: @Composable () -> Unit) {
             shouldShowRationale = permissionState.status.shouldShowRationale,
             onRequestPermission = { permissionState.launchPermissionRequest() },
         )
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF2A2A2A)
+@Composable
+private fun PermissionRationalePreview() {
+    AlainzMp3PlayerTheme {
+        PermissionRationale(shouldShowRationale = true, onRequestPermission = {})
     }
 }
 
@@ -100,6 +110,14 @@ private fun PermissionRationale(shouldShowRationale: Boolean, onRequestPermissio
 
 /** Permission denied with "don't ask again" — the system dialog won't show up anymore, so the
  * only way forward is the app's own settings screen. */
+@Preview(showBackground = true, backgroundColor = 0xFF2A2A2A)
+@Composable
+private fun PermanentlyDeniedPreview() {
+    AlainzMp3PlayerTheme {
+        PermanentlyDenied()
+    }
+}
+
 @Composable
 private fun PermanentlyDenied() {
     val accent = LocalAccentColor.current

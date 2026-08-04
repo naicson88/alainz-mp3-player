@@ -17,11 +17,21 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.naicson.alainz_mp3player.ui.theme.AccentGold
+import com.naicson.alainz_mp3player.ui.theme.AlainzMp3PlayerTheme
 import com.naicson.alainz_mp3player.ui.theme.AppTextStyles
 import com.naicson.alainz_mp3player.ui.theme.ElevatedSurface
 import com.naicson.alainz_mp3player.ui.theme.TextSecondary
+
+@Preview(showBackground = true, backgroundColor = 0xFF2A2A2A)
+@Composable
+private fun ShuffleOrderButtonsPreview() {
+    AlainzMp3PlayerTheme {
+        ShuffleOrderButtons(onShuffle = {}, onOrder = {})
+    }
+}
 
 /** The "Aleatório" / "Em ordem" pill pair shown on the songs, folder-detail and search-results headers. */
 @Composable

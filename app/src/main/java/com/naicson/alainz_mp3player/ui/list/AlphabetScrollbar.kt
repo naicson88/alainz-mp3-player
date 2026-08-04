@@ -5,9 +5,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,9 +21,11 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.naicson.alainz_mp3player.data.model.Song
+import com.naicson.alainz_mp3player.ui.theme.AlainzMp3PlayerTheme
 import com.naicson.alainz_mp3player.ui.theme.LocalAccentColor
 import com.naicson.alainz_mp3player.ui.theme.PopoverSurface
 import com.naicson.alainz_mp3player.ui.theme.TextFaint
@@ -111,6 +115,22 @@ internal fun nearestAvailableLetter(target: String, available: Set<String>): Str
         offset++
     }
     return available.firstOrNull()
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF2A2A2A)
+@Composable
+private fun AlphabetScrollbarPreview() {
+    AlainzMp3PlayerTheme {
+        Box(modifier = Modifier.height(320.dp).padding(8.dp)) {
+            AlphabetScrollbar(
+                visible = true,
+                availableLetters = setOf("A", "B", "C", "M", "S", "T"),
+                activeLetter = "M",
+                onLetterSelected = {},
+                onDragStateChanged = {},
+            )
+        }
+    }
 }
 
 /** Flat LazyColumn item index of each group's sticky header — one header item plus each group's

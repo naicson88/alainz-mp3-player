@@ -12,6 +12,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
@@ -25,7 +26,9 @@ import com.naicson.alainz_mp3player.ui.theme.TextHint
 @Composable
 fun SongListScreen(viewModel: MusicViewModel, modifier: Modifier = Modifier) {
     val state by viewModel.uiState.collectAsState()
-    val content = buildListContent(state)
+     val content = remember(state.songs, state.listView, state.openFolder, state.searchOpen, state.searchQuery) {
+        buildListContent(state)
+    }
 
     Column(modifier = modifier.fillMaxSize().background(ScreenBackground)) {
         ListHeader(state = state, viewModel = viewModel)

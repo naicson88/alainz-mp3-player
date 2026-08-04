@@ -25,6 +25,8 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -37,6 +39,7 @@ import javax.inject.Inject
  * (playing, position, shuffle, repeat, volume, current index) is mirrored from the real
  * [PlayerConnection] rather than simulated.
  */
+@OptIn(kotlinx.coroutines.FlowPreview::class)
 @HiltViewModel
 class MusicViewModel @Inject constructor(
     private val repository: MusicRepository,
@@ -65,8 +68,18 @@ class MusicViewModel @Inject constructor(
     private var coverSearchJob: Job? = null
 
     init {
-        viewModelScope.launch { player.isPlaying.collect { playing -> _uiState.update { it.copy(playing = playing) } } }
-        viewModelScope.launch { player.currentIndex.collect { index -> _uiState.update { it.copy(currentIndex = index) } } }
+        viewModelScope.launch {
+            player.isPlaying.collect { playing ->
+                _uiState.update { it.copy(playing = playing) }
+                if (!playing) persistPlaybackState()
+            }
+        }
+        viewModelScope.launch {
+            player.currentIndex.collect { index ->
+                _uiState.update { it.copy(currentIndex = index) }
+                persistPlaybackState()
+            }
+        }
         viewModelScope.launch { player.shuffleEnabled.collect { s -> _uiState.update { it.copy(shuffle = s) } } }
         viewModelScope.launch { player.repeatEnabled.collect { r -> _uiState.update { it.copy(repeat = r) } } }
         viewModelScope.launch { player.volume.collect { v -> _uiState.update { it.copy(volumePercent = v * 100f) } } }
@@ -76,6 +89,14 @@ class MusicViewModel @Inject constructor(
                 _uiState.update { it.copy(progressPercent = if (duration > 0) pos.toFloat() / duration * 100f else 0f) }
             }
         }
+        // Position updates twice a second while playing — sampled down to every 5s so resuming
+        // later doesn't need pinpoint accuracy but also doesn't hammer DataStore on every tick.
+        viewModelScope.launch { player.positionMs.sample(5000).collect { persistPlaybackState() } }
+    }
+
+    private fun persistPlaybackState() {
+        val song = _uiState.value.currentSong ?: return
+        viewModelScope.launch { preferences.saveLastPlayback(song.id, player.positionMs.value) }
     }
 
     /** Triggered once the audio permission is granted — see `RequireAudioPermission`. */
@@ -83,8 +104,22 @@ class MusicViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             val songs = repository.getSongs()
-            _uiState.update { it.copy(songs = songs, isLoading = false, currentIndex = 0) }
             player.setPlaylist(songs)
+
+            // Resume where playback left off last run — paused, not auto-playing, since a
+            // freshly (re)launched app shouldn't just start blaring music on its own.
+            var restoredIndex = 0
+            val lastPlayback = preferences.lastPlayback.first()
+            if (lastPlayback != null) {
+                val (songId, positionMs) = lastPlayback
+                val index = songs.indexOfFirst { it.id == songId }
+                if (index >= 0) {
+                    restoredIndex = index
+                    player.prepareAt(index, positionMs)
+                }
+            }
+
+            _uiState.update { it.copy(songs = songs, isLoading = false, currentIndex = restoredIndex) }
         }
     }
 
@@ -156,7 +191,7 @@ class MusicViewModel @Inject constructor(
         if (indices.isEmpty()) return@launch
         if (!shuffleMode) {
             player.setShuffle(false)
-            player.seekToStartAndPlay()
+            player.seekToIndexAndPlay(indices.first())
             return@launch
         }
         player.setShuffle(true)
@@ -172,7 +207,7 @@ class MusicViewModel @Inject constructor(
 
     fun playAllOrder() = viewModelScope.launch {
         player.setShuffle(false)
-        player.seekToStartAndPlay()
+        player.seekToIndexAndPlay(0)
     }
 
     fun playSearch(shuffleMode: Boolean) = viewModelScope.launch {

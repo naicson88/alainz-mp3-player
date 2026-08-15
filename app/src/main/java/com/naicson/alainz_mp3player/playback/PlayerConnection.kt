@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.media.AudioManager
 import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
@@ -17,8 +18,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -58,6 +62,11 @@ class PlayerConnection @Inject constructor(
 
     private val _repeatEnabled = MutableStateFlow(false)
     val repeatEnabled: StateFlow<Boolean> = _repeatEnabled.asStateFlow()
+
+    /** Emits the title of a track that failed to play (unsupported/corrupt file) so the UI can
+     * toast it — the player auto-skips to the next track rather than getting stuck silently. */
+    private val _playbackErrors = MutableSharedFlow<String>(extraBufferCapacity = 1)
+    val playbackErrors: SharedFlow<String> = _playbackErrors.asSharedFlow()
 
     /**
      * Fraction (0..1) of the device's real `STREAM_MUSIC` volume — deliberately not the
@@ -109,6 +118,19 @@ class PlayerConnection @Inject constructor(
 
         override fun onRepeatModeChanged(repeatMode: Int) {
             _repeatEnabled.value = repeatMode != Player.REPEAT_MODE_OFF
+        }
+
+        override fun onPlayerError(error: PlaybackException) {
+            val c = controller ?: return
+            val title = c.mediaMetadata.title?.toString().orEmpty()
+            _playbackErrors.tryEmit(title)
+            // An error leaves the player in STATE_IDLE, so it needs re-preparing before it will
+            // advance on its own — otherwise it just sits there stuck on the failed track.
+            if (c.hasNextMediaItem()) {
+                c.seekToNext()
+                c.prepare()
+                c.play()
+            }
         }
     }
 

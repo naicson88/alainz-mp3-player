@@ -87,6 +87,11 @@ class MusicViewModel @Inject constructor(
             }
         }
         viewModelScope.launch { player.shuffleEnabled.collect { s -> _uiState.update { it.copy(shuffle = s) } } }
+        viewModelScope.launch {
+            player.playbackErrors.collect { title ->
+                showToast(if (title.isNotBlank()) "Não foi possível tocar \"$title\" (formato não suportado)" else "Não foi possível tocar essa faixa")
+            }
+        }
         viewModelScope.launch { player.repeatEnabled.collect { r -> _uiState.update { it.copy(repeat = r) } } }
         viewModelScope.launch { player.volume.collect { v -> _uiState.update { it.copy(volumePercent = v * 100f) } } }
         viewModelScope.launch {
@@ -111,6 +116,7 @@ class MusicViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true) }
             val songs = repository.getSongs()
             player.setPlaylist(songs)
+            player.setShuffle(true) // shuffle is the default mode every time the app opens
 
             // Resume where playback left off last run — paused, not auto-playing, since a
             // freshly (re)launched app shouldn't just start blaring music on its own.

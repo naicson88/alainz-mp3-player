@@ -10,10 +10,20 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.naicson.alainz_mp3player.ui.theme.AlainzMp3PlayerTheme
 import com.naicson.alainz_mp3player.ui.theme.Danger
 import com.naicson.alainz_mp3player.ui.theme.PopoverSurface
 import com.naicson.alainz_mp3player.ui.theme.TextPrimary
+
+@Preview(showBackground = true, backgroundColor = 0xFF2A2A2A)
+@Composable
+private fun SongOptionsMenuPreview() {
+    AlainzMp3PlayerTheme {
+        SongOptionsMenu(expanded = true, onDismiss = {}, onEdit = {}, onChangeCover = {}, onSetRingtone = {}, onDelete = {})
+    }
+}
 
 /** The "⋮" menu shown per song and on the Player screen: edit / change cover / set ringtone / delete. */
 @Composable

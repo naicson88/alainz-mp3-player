@@ -25,12 +25,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.naicson.alainz_mp3player.data.model.Song
 import com.naicson.alainz_mp3player.data.model.folderDisplayName
 import com.naicson.alainz_mp3player.ui.components.CoverArt
 import com.naicson.alainz_mp3player.ui.components.SongOptionsMenu
 import com.naicson.alainz_mp3player.ui.theme.AccentGold
+import com.naicson.alainz_mp3player.ui.theme.AlainzMp3PlayerTheme
 import com.naicson.alainz_mp3player.ui.theme.AppTextStyles
 import com.naicson.alainz_mp3player.ui.theme.ElevatedSurface
 import com.naicson.alainz_mp3player.ui.theme.FolderFront
@@ -43,10 +45,41 @@ import com.naicson.alainz_mp3player.ui.theme.TextPrimary
 
 const val ListRowHeight = 62
 
+private val PreviewSong = Song(id = 1, title = "Título da Música", artist = "Artista Exemplo", album = "Álbum", genre = "Pop", durationSec = 215, filePath = "/music/song.mp3")
+
+@Preview(showBackground = true, backgroundColor = 0xFF2A2A2A)
+@Composable
+private fun HeaderRowPreview() {
+    AlainzMp3PlayerTheme {
+        HeaderRow(letter = "M")
+    }
+}
+
 @Composable
 fun HeaderRow(letter: String, modifier: Modifier = Modifier) {
     Box(modifier = modifier.fillMaxWidth().background(SectionHeaderBackground).padding(horizontal = 20.dp, vertical = 6.dp)) {
         Text(letter, style = AppTextStyles.sectionLetter, color = TextHint)
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF2A2A2A)
+@Composable
+private fun SongRowPreview() {
+    AlainzMp3PlayerTheme {
+        SongRow(
+            song = PreviewSong,
+            isCurrent = true,
+            stripeEven = true,
+            menuExpanded = false,
+            onSelect = {},
+            onOpenPlayer = {},
+            onToggleMenu = {},
+            onDismissMenu = {},
+            onEdit = {},
+            onChangeCover = {},
+            onSetRingtone = {},
+            onDelete = {},
+        )
     }
 }
 
@@ -99,6 +132,14 @@ fun SongRow(
                 onDelete = onDelete,
             )
         }
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF2A2A2A)
+@Composable
+private fun FolderRowPreview() {
+    AlainzMp3PlayerTheme {
+        FolderRow(summary = FolderSummary(path = "/music/Rock", count = 12, stripeIndex = 0), stripeEven = true, onOpen = {})
     }
 }
 

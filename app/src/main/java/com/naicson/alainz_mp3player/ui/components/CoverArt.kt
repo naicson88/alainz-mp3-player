@@ -5,6 +5,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MusicNote
@@ -17,10 +18,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.naicson.alainz_mp3player.data.local.EmbeddedArtwork
 import com.naicson.alainz_mp3player.data.model.Song
+import com.naicson.alainz_mp3player.ui.theme.AlainzMp3PlayerTheme
 import com.naicson.alainz_mp3player.ui.theme.ElevatedSurface
 import com.naicson.alainz_mp3player.ui.theme.TextFaint
 
@@ -63,6 +66,17 @@ fun CoverArt(
                 modifier = Modifier.fillMaxSize(iconFraction),
             )
         }
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF2A2A2A)
+@Composable
+private fun CoverArtPreview() {
+    AlainzMp3PlayerTheme {
+        CoverArt(
+            song = Song(id = 1, title = "Título", artist = "Artista", album = "Álbum", genre = "Pop", durationSec = 180, filePath = "/music/song.mp3"),
+            modifier = Modifier.size(120.dp),
+        )
     }
 }
 

@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_background"
+    android:clipToOutline="true">
+
+    <ImageView
+        android:id="@+id/widget_cover"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="centerCrop"
+        android:src="@drawable/ic_widget_music_note" />
+
+    <!-- Plain android.view.View isn't in RemoteViews' supported-class allowlist, so an empty
+         FrameLayout stands in for it — same effect, a class the widget host can inflate. -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/widget_bottom_scrim" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:orientation="vertical"
+        android:padding="18dp">
+
+        <TextView
+            android:id="@+id/widget_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="@string/widget_no_song"
+            android:textColor="#FFFFFF"
+            android:textSize="19sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/widget_artist"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="3dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="#D8D8D8"
+            android:textSize="14sp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:gravity="center"
+            android:orientation="horizontal">
+
+            <ImageButton
+                android:id="@+id/widget_prev"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/widget_previous"
+                android:padding="13dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_widget_previous" />
+
+            <ImageButton
+                android:id="@+id/widget_play_pause"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:layout_marginStart="10dp"
+                android:background="@drawable/widget_play_circle_bg"
+                android:contentDescription="@string/widget_play_pause"
+                android:padding="13dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_widget_play" />
+
+            <ImageButton
+                android:id="@+id/widget_next"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:layout_marginStart="10dp"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/widget_next"
+                android:padding="13dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_widget_next" />
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>

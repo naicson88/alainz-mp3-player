@@ -155,6 +155,17 @@ class PlayerConnection @Inject constructor(
         c.prepare()
     }
 
+    /** Restores where playback left off in a previous app run — seeks there without starting
+     * playback, since a freshly (re)launched app shouldn't just start blaring music on its own. */
+    suspend fun prepareAt(index: Int, positionMs: Long) {
+        val c = awaitController()
+        if (index in 0 until c.mediaItemCount) {
+            c.seekTo(index, positionMs)
+            _currentIndex.value = index
+            _positionMs.value = positionMs
+        }
+    }
+
     /** Refreshes one item's title/artist/artwork in place — e.g. after editing a song's info —
      * without interrupting playback if it's the item currently playing. */
     suspend fun updateMediaItem(index: Int, song: Song) {
@@ -178,9 +189,14 @@ class PlayerConnection @Inject constructor(
     suspend fun next() = awaitController().seekToNext()
     suspend fun previous() = awaitController().seekToPrevious()
 
-    suspend fun seekToStartAndPlay() {
+    /** "Play in order" from a given song index — e.g. the first song of the whole library, or
+     * the first song of a specific folder. `seekTo(positionMs)` (single-arg) seeks *within the
+     * current item*, which was the bug here: it restarted whatever was already playing instead
+     * of jumping to a different song; the two-arg `seekTo(index, positionMs)` is what actually
+     * moves to a different item. */
+    suspend fun seekToIndexAndPlay(index: Int) {
         val c = awaitController()
-        c.seekTo(0L)
+        c.seekTo(index, 0L)
         c.play()
     }
 

@@ -6,6 +6,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.naicson.alainz_mp3player.data.local.DeleteOutcome
+import com.naicson.alainz_mp3player.data.local.EmbeddedArtwork
 import com.naicson.alainz_mp3player.data.local.RingtoneAssigner
 import com.naicson.alainz_mp3player.data.local.UserPreferencesRepository
 import com.naicson.alainz_mp3player.data.local.contentUri
@@ -25,6 +26,8 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -37,6 +40,7 @@ import javax.inject.Inject
  * (playing, position, shuffle, repeat, volume, current index) is mirrored from the real
  * [PlayerConnection] rather than simulated.
  */
+@OptIn(kotlinx.coroutines.FlowPreview::class)
 @HiltViewModel
 class MusicViewModel @Inject constructor(
     private val repository: MusicRepository,
@@ -64,9 +68,24 @@ class MusicViewModel @Inject constructor(
     private var toastJob: Job? = null
     private var coverSearchJob: Job? = null
 
+    /** Song IDs already checked for an automatic cover this session — avoids re-hitting the
+     * network every time the same coverless song plays again (e.g. on repeat). */
+    private val autoCoverChecked = mutableSetOf<Long>()
+
     init {
-        viewModelScope.launch { player.isPlaying.collect { playing -> _uiState.update { it.copy(playing = playing) } } }
-        viewModelScope.launch { player.currentIndex.collect { index -> _uiState.update { it.copy(currentIndex = index) } } }
+        viewModelScope.launch {
+            player.isPlaying.collect { playing ->
+                _uiState.update { it.copy(playing = playing) }
+                if (!playing) persistPlaybackState()
+            }
+        }
+        viewModelScope.launch {
+            player.currentIndex.collect { index ->
+                _uiState.update { it.copy(currentIndex = index) }
+                persistPlaybackState()
+                _uiState.value.currentSong?.let { song -> viewModelScope.launch { maybeAutoFetchCover(song) } }
+            }
+        }
         viewModelScope.launch { player.shuffleEnabled.collect { s -> _uiState.update { it.copy(shuffle = s) } } }
         viewModelScope.launch { player.repeatEnabled.collect { r -> _uiState.update { it.copy(repeat = r) } } }
         viewModelScope.launch { player.volume.collect { v -> _uiState.update { it.copy(volumePercent = v * 100f) } } }
@@ -76,6 +95,14 @@ class MusicViewModel @Inject constructor(
                 _uiState.update { it.copy(progressPercent = if (duration > 0) pos.toFloat() / duration * 100f else 0f) }
             }
         }
+        // Position updates twice a second while playing — sampled down to every 5s so resuming
+        // later doesn't need pinpoint accuracy but also doesn't hammer DataStore on every tick.
+        viewModelScope.launch { player.positionMs.sample(5000).collect { persistPlaybackState() } }
+    }
+
+    private fun persistPlaybackState() {
+        val song = _uiState.value.currentSong ?: return
+        viewModelScope.launch { preferences.saveLastPlayback(song.id, player.positionMs.value) }
     }
 
     /** Triggered once the audio permission is granted — see `RequireAudioPermission`. */
@@ -83,8 +110,23 @@ class MusicViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             val songs = repository.getSongs()
-            _uiState.update { it.copy(songs = songs, isLoading = false, currentIndex = 0) }
             player.setPlaylist(songs)
+
+            // Resume where playback left off last run — paused, not auto-playing, since a
+            // freshly (re)launched app shouldn't just start blaring music on its own.
+            var restoredIndex = 0
+            val lastPlayback = preferences.lastPlayback.first()
+            if (lastPlayback != null) {
+                val (songId, positionMs) = lastPlayback
+                val index = songs.indexOfFirst { it.id == songId }
+                if (index >= 0) {
+                    restoredIndex = index
+                    player.prepareAt(index, positionMs)
+                }
+            }
+
+            _uiState.update { it.copy(songs = songs, isLoading = false, currentIndex = restoredIndex) }
+            _uiState.value.currentSong?.let { song -> maybeAutoFetchCover(song) }
         }
     }
 
@@ -156,7 +198,7 @@ class MusicViewModel @Inject constructor(
         if (indices.isEmpty()) return@launch
         if (!shuffleMode) {
             player.setShuffle(false)
-            player.seekToStartAndPlay()
+            player.seekToIndexAndPlay(indices.first())
             return@launch
         }
         player.setShuffle(true)
@@ -172,7 +214,7 @@ class MusicViewModel @Inject constructor(
 
     fun playAllOrder() = viewModelScope.launch {
         player.setShuffle(false)
-        player.seekToStartAndPlay()
+        player.seekToIndexAndPlay(0)
     }
 
     fun playSearch(shuffleMode: Boolean) = viewModelScope.launch {
@@ -254,10 +296,11 @@ class MusicViewModel @Inject constructor(
     /** Menu action — opens the cover picker pre-searched on the song's own artist/title. */
     fun openChangeCover(songId: Long) {
         val song = _uiState.value.songs.firstOrNull { it.id == songId } ?: return
+        val query = if (song.artist == "Artista desconhecido") song.title else "${song.artist} ${song.title}"
         _uiState.update {
             it.copy(
                 coverPickerSongId = songId,
-                coverSearchQuery = "${song.artist} ${song.title}".trim(),
+                coverSearchQuery = query.trim(),
                 coverSearchResults = emptyList(),
                 coverSearchSelectedUrl = null,
                 openMenuSongId = null,
@@ -303,6 +346,28 @@ class MusicViewModel @Inject constructor(
             )
         }
         viewModelScope.launch { repository.updateCustomCover(songId, url) }
+    }
+
+    /** Runs once per song per session, right when it becomes the current one: if it has neither
+     * a user-picked cover nor artwork embedded in its own tags, silently searches iTunes with the
+     * same artist/title criteria as the manual picker and adopts the first hit — no dialog, no
+     * user action. Leaves the cover-picker UI state alone so it can't clobber a picker the user
+     * might have open for a different song. */
+    private suspend fun maybeAutoFetchCover(song: Song) {
+        if (!autoCoverChecked.add(song.id)) return
+        if (song.customCoverUri != null) return
+        if (EmbeddedArtwork.load(song.id, song.filePath) != null) return
+
+        val query = (if (song.artist == "Artista desconhecido") song.title else "${song.artist} ${song.title}").trim()
+        if (query.isEmpty()) return
+        val url = albumArtSearch.search(query).firstOrNull() ?: return
+
+        // The song may have moved on (or gotten a cover some other way) while the search ran.
+        val stillMissing = _uiState.value.songs.firstOrNull { it.id == song.id }?.customCoverUri == null
+        if (!stillMissing) return
+
+        _uiState.update { s -> s.copy(songs = s.songs.map { if (it.id == song.id) it.copy(customCoverUri = url) else it }) }
+        repository.updateCustomCover(song.id, url)
     }
 
     /** Menu action — writing the ringtone needs WRITE_SETTINGS, a special-access permission
